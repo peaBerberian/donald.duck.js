@@ -482,7 +482,6 @@ class Cursor {
 
   /**
    * Get the placement of the givent element.
-   * TODO Move that, nothing to do in here but for the currently selected.
    * @param {HTMLElement} [el]
    * @returns {Object} placement
    * @returns {Number} placement.top
@@ -506,6 +505,10 @@ class Cursor {
    */
   getFocused () {
     return this.__focused;
+  }
+
+  focusPlacement (placement) {
+    // TODO
   }
 
   /**

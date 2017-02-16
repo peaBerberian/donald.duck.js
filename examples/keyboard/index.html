@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width">
+    <title>Virtual keyboard</title>
+    <style>
+    body {
+      background-color: #335;
+    }
+
+    .keyboard {
+      width: 672px;
+      margin-top: 58px;
+      text-transform: none;
+      border-collapse: separate;
+      margin: auto;
+    }
+
+    .keyboard td {
+      position: relative;
+      width: 42px;
+      text-align: center;
+      color: rgb(235, 235, 235);
+      font-size: 25px;
+      line-height: 42px;
+      border: 3px solid transparent;
+      background-color: rgba(0, 0, 0, 0.7);
+      background-clip: padding-box;
+    }
+
+    .keyboard td._cursor_ {
+      border: 3px solid #fff;
+    }
+
+    .keyboard .switch {
+      letter-spacing: -1px;
+      font-size: 16px;
+      background-color: rgba(0, 0, 0, 0.5);
+    }
+
+    .k-input {
+      display: block;
+      width: 476px;
+      letter-spacing: 1px;
+      height: 30px;
+      margin: 18px auto 18px auto;
+      padding: 2px 12px 2px 12px;
+      color: rgb(32, 32, 32);
+      font-size: 26px;
+      background-color: #cce;
+      overflow: hidden;
+    }
+    </style>
+  </head>
+  <body>
+    <div class="k-input"></div>
+    <table class="keyboard">
+      <tr>
+        <td class="_mrr_ k-key"></td>
+        <td class="_mrr_ k-key"></td>
+        <td class="_mrr_ k-key"></td>
+        <td class="_mrr_ k-key"></td>
+        <td class="_mrr_ k-key"></td>
+        <td class="_mrr_ k-key"></td>
+        <td class="_mrr_ k-key"></td>
+        <td class="_mrr_ k-key"></td>
+        <td class="_mrr_ k-key"></td>
+        <td class="_mrr_ k-delete" onclick="onDelete()" colspan="2">delete</td>
+      </tr>
+      <tr>
+        <td class="_mrr_ k-key"></td>
+        <td class="_mrr_ k-key"></td>
+        <td class="_mrr_ k-key"></td>
+        <td class="_mrr_ k-key"></td>
+        <td class="_mrr_ k-key"></td>
+        <td class="_mrr_ k-key"></td>
+        <td class="_mrr_ k-key"></td>
+        <td class="_mrr_ k-key"></td>
+        <td class="_mrr_ k-key"></td>
+        <td class="_mrr_ k-key"></td>
+        <td class="_mrr_ k-key"></td>
+      </tr>
+      <tr>
+        <td class="_mrr_ k-key"></td>
+        <td class="_mrr_ k-key"></td>
+        <td class="_mrr_ k-key"></td>
+        <td class="_mrr_ k-key"></td>
+        <td class="_mrr_ k-key"></td>
+        <td class="_mrr_ k-key"></td>
+        <td class="_mrr_ k-key"></td>
+        <td class="_mrr_ k-key"></td>
+        <td class="_mrr_ k-key"></td>
+        <td class="_mrr_ k-key"></td>
+        <td class="_mrr_ k-key"></td>
+      </tr>
+      <tr>
+        <td class="_mrr_ k-key"></td>
+        <td class="_mrr_ k-key"></td>
+        <td class="_mrr_ k-key"></td>
+        <td class="_mrr_ k-key"></td>
+        <td class="_mrr_ k-key"></td>
+        <td class="_mrr_ k-key"></td>
+        <td class="_mrr_ k-key"></td>
+        <td class="_mrr_ k-key"></td>
+        <td class="_mrr_ k-key"></td>
+        <td class="_mrr_ k-key"></td>
+        <td class="_mrr_ k-key"></td>
+      </tr>
+      <tr>
+        <td class="_mrr_ switch k-case" onclick="switchCase()">A/a</td>
+        <td class="_mrr_ k-space" onclick="onKey(' ')" colspan="9">space</td>
+        <td class="_mrr_ switch k-symbol" onclick="switchToSymbols()">#é=</td>
+      </tr>
+    </table>
+  <script src="../../dist/morora.min.js"></script>
+  <script src="./bundle.js"></script>
+  </body>
+</html>
