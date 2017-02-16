@@ -18,14 +18,6 @@ class Cursor {
     this.__focused = null;
     this.__links = document.body.getElementsByClassName(SELECTABLE_CLASSNAME);
 
-    // const observer = new MutationObserver(() => {
-    //   if (!this.getFocused() && this.isActivated()) {
-    //     this.focusFirst();
-    //   } else if (!utils.isInScreen(this.getFocused())) {
-    //     this.moveClosest();
-    //   }
-    // });
-
     this.focus(focus);
 
     if (!manual) {
@@ -240,28 +232,52 @@ class Cursor {
     };
 
     let currentBest = {
-      el: null,
-      placement: {}
+      el: null, placement: {}
     };
 
+    let foundWithinXAxis = false;
+
     for (let i = 0, len = this.__links.length; i < len; i++) {
-      const elem = { el: this.__links[i] };
+      const el = this.__links[i];
+      const elem = {
+        el,
+        placement: this.getPlacement(el)
+      };
+
       if (
         (utils.isInScreen(elem.el) && elem.el !== focused.el) &&
-
-        // if both in X and Y axis, it means that they are overlaping
-        (utils.withinXAxis(focused.el, elem.el) ||
-         !utils.withinYAxis(focused.el, elem.el))
+        !utils.withinYAxis(focused.el, elem.el) &&
+        elem.placement.left > focused.placement.right
       ) {
-        elem.placement = this.getPlacement(elem.el);
-        if (elem.placement.left > focused.placement.left) {
-          elem.distance = utils.distanceRight(focused.el, elem.el);
-          if (!currentBest.el || elem.distance < currentBest.distance ) {
+        if (utils.withinXAxis(focused.el, elem.el)) {
+          if (!foundWithinXAxis) {
+            foundWithinXAxis = true;
+            currentBest = elem;
+          } else if (!currentBest.el) {
+            currentBest = elem;
+          } else if (elem.placement.left < currentBest.placement.left) {
+            currentBest = elem;
+          } else if (
+            elem.placement.left === currentBest.placement.left &&
+            elem.placement.top < currentBest.placement.top
+          ) {
+            currentBest = elem;
+          }
+        } else if (!foundWithinXAxis) {
+          if (!currentBest.el) {
+            currentBest = elem;
+          } else if (elem.placement.left < currentBest.placement.left) {
+            currentBest = elem;
+          } if (
+            elem.placement.left === currentBest.placement.left &&
+            elem.placement.top < currentBest.placement.top
+          ) {
             currentBest = elem;
           }
         }
       }
     }
+
     return currentBest.el ||
       (utils.isInScreen(this.__focused) ? this.__focused : null);
   }
@@ -282,28 +298,52 @@ class Cursor {
     };
 
     let currentBest = {
-      el: null,
-      placement: {}
+      el: null, placement: {}
     };
 
+    let foundWithinXAxis = false;
+
     for (let i = 0, len = this.__links.length; i < len; i++) {
-      const elem = { el: this.__links[i] };
+      const el = this.__links[i];
+      const elem = {
+        el,
+        placement: this.getPlacement(el)
+      };
+
       if (
         (utils.isInScreen(elem.el) && elem.el !== focused.el) &&
-
-        // if both in X and Y axis, it means that they are overlaping
-        (utils.withinXAxis(focused.el, elem.el) ||
-          !utils.withinYAxis(focused.el, elem.el))
+        !utils.withinYAxis(focused.el, elem.el) &&
+        elem.placement.right < focused.placement.left
       ) {
-        elem.placement = this.getPlacement(elem.el);
-        if (elem.placement.right < focused.placement.right) {
-          elem.distance = utils.distanceLeft(focused.el, elem.el);
-          if (!currentBest.el || elem.distance < currentBest.distance ) {
+        if (utils.withinXAxis(focused.el, elem.el)) {
+          if (!foundWithinXAxis) {
+            foundWithinXAxis = true;
+            currentBest = elem;
+          } else if (!currentBest.el) {
+            currentBest = elem;
+          } else if (elem.placement.right > currentBest.placement.right) {
+            currentBest = elem;
+          } else if (
+            elem.placement.right === currentBest.placement.right &&
+            elem.placement.top < currentBest.placement.top
+          ) {
+            currentBest = elem;
+          }
+        } else if (!foundWithinXAxis) {
+          if (!currentBest.el) {
+            currentBest = elem;
+          } else if (elem.placement.right > currentBest.placement.right) {
+            currentBest = elem;
+          } if (
+            elem.placement.right === currentBest.placement.right &&
+            elem.placement.top < currentBest.placement.top
+          ) {
             currentBest = elem;
           }
         }
       }
     }
+
     return currentBest.el ||
       (utils.isInScreen(this.__focused) ? this.__focused : null);
   }
@@ -324,31 +364,52 @@ class Cursor {
     };
 
     let currentBest = {
-      el: null,
-      placement: {}
+      el: null, placement: {}
     };
 
+    let foundWithinYAxis = false;
+
     for (let i = 0, len = this.__links.length; i < len; i++) {
+      const el = this.__links[i];
       const elem = {
-        el: this.__links[i]
+        el,
+        placement: this.getPlacement(el)
       };
 
       if (
-        (utils.isInScreen(elem.el) && elem.el !== focused.e) &&
-
-        // if both in X and Y axis, it means that they are overlaping
-        (!utils.withinXAxis(focused.el, elem.el) ||
-          utils.withinYAxis(focused.el, elem.el))
+        (utils.isInScreen(elem.el) && elem.el !== focused.el) &&
+        !utils.withinXAxis(focused.el, elem.el) &&
+        elem.placement.bottom < focused.placement.top
       ) {
-        elem.placement = this.getPlacement(elem.el);
-        if (elem.placement.bottom < focused.placement.bottom) {
-          elem.distance = utils.distanceUp(focused.el, elem.el);
-          if (!currentBest.el || elem.distance < currentBest.distance ) {
+        if (utils.withinYAxis(focused.el, elem.el)) {
+          if (!foundWithinYAxis) {
+            foundWithinYAxis = true;
+            currentBest = elem;
+          } else if (!currentBest.el) {
+            currentBest = elem;
+          } else if (elem.placement.bottom > currentBest.placement.bottom) {
+            currentBest = elem;
+          } else if (
+            elem.placement.bottom === currentBest.placement.bottom &&
+            elem.placement.left < currentBest.placement.left
+          ) {
+            currentBest = elem;
+          }
+        } else if (!foundWithinYAxis) {
+          if (!currentBest.el) {
+            currentBest = elem;
+          } else if (elem.placement.bottom < currentBest.placement.bottom) {
+            currentBest = elem;
+          } if (
+            elem.placement.bottom === currentBest.placement.bottom &&
+            elem.placement.left < currentBest.placement.left
+          ) {
             currentBest = elem;
           }
         }
       }
     }
+
     return currentBest.el ||
       (utils.isInScreen(this.__focused) ? this.__focused : null);
   }
@@ -372,24 +433,49 @@ class Cursor {
       el: null, placement: {}
     };
 
+    let foundWithinYAxis = false;
+
     for (let i = 0, len = this.__links.length; i < len; i++) {
-      const elem = { el: this.__links[i] };
+      const el = this.__links[i];
+      const elem = {
+        el,
+        placement: this.getPlacement(el)
+      };
+
       if (
         (utils.isInScreen(elem.el) && elem.el !== focused.el) &&
-
-        // if both in X and Y axis, it means that they are overlaping
-        (!utils.withinXAxis(focused.el, elem.el) ||
-          utils.withinYAxis(focused.el, elem.el))
+        !utils.withinXAxis(focused.el, elem.el) &&
+        elem.placement.top > focused.placement.bottom
       ) {
-        elem.placement = this.getPlacement(elem.el);
-        if (elem.placement.top > focused.placement.top) {
-          elem.distance = utils.distanceDown(focused.el, elem.el);
-          if (!currentBest.el || elem.distance < currentBest.distance ) {
+        if (utils.withinYAxis(focused.el, elem.el)) {
+          if (!foundWithinYAxis) {
+            foundWithinYAxis = true;
+            currentBest = elem;
+          } else if (!currentBest.el) {
+            currentBest = elem;
+          } else if (elem.placement.top < currentBest.placement.top) {
+            currentBest = elem;
+          } else if (
+            elem.placement.top === currentBest.placement.top &&
+            elem.placement.left < currentBest.placement.left
+          ) {
+            currentBest = elem;
+          }
+        } else if (!foundWithinYAxis) {
+          if (!currentBest.el) {
+            currentBest = elem;
+          } else if (elem.placement.top < currentBest.placement.top) {
+            currentBest = elem;
+          } if (
+            elem.placement.top === currentBest.placement.top &&
+            elem.placement.left < currentBest.placement.left
+          ) {
             currentBest = elem;
           }
         }
       }
     }
+
     return currentBest.el ||
       (utils.isInScreen(this.__focused) ? this.__focused : null);
   }
