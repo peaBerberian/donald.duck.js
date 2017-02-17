@@ -1,4 +1,4 @@
-import { SELECTABLE_CLASSNAME, KEY_CODES } from './constants.js';
+import { FOCUSABLE_CLASSNAME, KEY_CODES } from './constants.js';
 import utils from './utils.js';
 
 /**
@@ -7,22 +7,30 @@ import utils from './utils.js';
 class Cursor {
   /**
    * Cursor constructor
-   * @param {Object} [options]
-   * @param {boolean} [options.manual]
-   * @param {HTMLElement} [options.focus] - The first element to focus.
+   * @param {Object} [options = {}]
+   * @param {Boolean} [options.manual] - If true, the left, right, up, down and
+   * enter key are not binded.
+   * @param {HTMLElement} [options.focus] - The first element to focus. If falsy
+   * the first valable element encountered will be focused.
+   * @param {Boolean} [options.deactivated] - Wether the cursor should be
+   * initially deactivated. False by default.
+   * @param {Boolean} [options.lazy] - If true, the placement of each element
+   * will only be calculated:
+   *   - on instanciation
+   *   - when calling the refresh method
+   * If falsy, the calculation will be done each time the user wants to move the
+   * cursor. TODO?
+   * @param {Boolean
    */
-  constructor (options) {
-    const focus = options && options.focus;
-    const manual = options && options.manual;
+  constructor (options = {}) {
+    this._deactivated = !!options.deactivated;
+    this._focused = null;
+    this._links = document.body.getElementsByClassName(FOCUSABLE_CLASSNAME);
+    this.focus(options.focus);
 
-    this.__focused = null;
-    this.__links = document.body.getElementsByClassName(SELECTABLE_CLASSNAME);
-
-    this.focus(focus);
-
-    if (!manual) {
-      window.addEventListener('keydown', (ev) => {
-        switch (ev.keyCode) {
+    if (!options.manual) {
+      window.addEventListener('keydown', ({ keyCode }) => {
+        switch (keyCode) {
           case KEY_CODES.LEFT:
             this.moveLeft();
             break;
@@ -48,14 +56,14 @@ class Cursor {
    */
   deactivate () {
     this.removeFocus();
-    this.__deactivated = true;
+    this._deactivated = true;
   }
 
   /**
    * Activate Cursor management and focus.
    */
   activate () {
-    this.__deactivated = false;
+    this._deactivated = false;
     this.focusFirst();
   }
 
@@ -64,7 +72,7 @@ class Cursor {
    * @returns {Boolean}
    */
   isActivated () {
-    return !this.__deactivated;
+    return !this._deactivated;
   }
 
   /**
@@ -73,24 +81,20 @@ class Cursor {
    * @returns {Boolean}
    */
   isFocusable (el) {
-    return utils.arrayIncludes(this.__links, el) && utils.isInScreen(el);
+    return utils.arrayIncludes(this._links, el) &&
+      utils.isInScreen(this.getPlacement(el));
   }
 
   /**
    * 'Clicks' on the focused element.
    */
   click () {
-    if (this.__deactivated) {
-      return;
-    }
-    if (!this.__focused) {
+    if (this._deactivated || !this._focused) {
       return;
     }
 
-    if (this.__focused.click) {
-      this.__focused.click();
-    } else if (this.__focused.hasOwnProperty('href')) {
-      window.location = this.__focused.href;
+    if (this._focused.click) {
+      this._focused.click();
     }
   }
 
@@ -98,50 +102,35 @@ class Cursor {
    * Move the focus to the element on the left.
    */
   moveLeft () {
-    if (!this.__focused) {
-      return this.focusFirst();
-    }
-    return this.focus(this.getLeft());
+    this._focused ? this.focus(this.getLeft()) : this.focusFirst();
   }
 
   /**
    * Move the focus to the element on the right.
    */
   moveRight () {
-    if (!this.__focused) {
-      return this.focusFirst();
-    }
-    return this.focus(this.getRight());
+    this._focused ? this.focus(this.getRight()) : this.focusFirst();
   }
 
   /**
    * Move the focus to the element on the top.
    */
   moveUp () {
-    if (!this.__focused) {
-      return this.focusFirst();
-    }
-    return this.focus(this.getUp());
+    this._focused ? this.focus(this.getUp()) : this.focusFirst();
   }
 
   /**
    * Move the focus to the element on the bottom.
    */
   moveDown () {
-    if (!this.__focused) {
-      return this.focusFirst();
-    }
-    return this.focus(this.getDown());
+    this._focused ? this.focus(this.getDown()) : this.focusFirst();
   }
 
   /**
    * Move the focus to the closest element.
    */
   moveClosest () {
-    if (!this.__focused) {
-      return this.focusFirst();
-    }
-    return this.focus(this.getClosest());
+    this._focused ? this.focus(this.getClosest()) : this.focusFirst();
   }
 
   /**
@@ -149,25 +138,18 @@ class Cursor {
    * @see getFirst
    */
   focusFirst () {
-    if (this.__focused) {
-      this.removeFocus();
-    }
-
-    const link = this.getFirst();
-    if (!link) {
-      return;
-    }
-    return this.focus(link);
+    this.focus(this.getFirst());
   }
 
   /**
-   * Get 'first' element focusable (first focusable element in the DOM).
+   * Get 'first' element focusable (first focusable element entirely in the
+   * DOM).
    * @returns {HTMLElement|undefined}
    */
   getFirst () {
-    for (let i = 0, len = this.__links.length; i < len; i++) {
-      if (utils.isInScreen(this.__links[i])) {
-        return this.__links[i];
+    for (let i = 0, len = this._links.length; i < len; i++) {
+      if (utils.isInScreen(this.getPlacement(this._links[i]))) {
+        return this._links[i];
       }
     }
   }
@@ -177,11 +159,16 @@ class Cursor {
    * @returns {HTMLElement|undefined}
    */
   getClosest () {
-    const cur = this.__focused;
+    const current = this._focused;
 
-    if (!cur) {
+    // TODO limit to only one getElementPlacement call
+    // const currentPlacement = utils.getElementPlacement();
+
+    if (!current) {
       return this.getFirst();
     }
+
+    const focP = this.getPlacement();
 
     const elements = {
       left: this.getLeft(),
@@ -190,30 +177,42 @@ class Cursor {
       down: this.getDown()
     };
 
-    for (let direction in distances) {
-      if (elements[direction] === cur) {
-        elements[direction] = null;
-      }
-    }
+    const candidates = Object.keys(elements).reduce((acc, k) => {
+      const el = elements[k];
+      acc[k] = !el || el === current ? null : {
+        el,
+        placement: this.getPlacement(el)
+      };
+      return acc;
+    }, {});
 
     const distances = {
-      left:  !!elements.left  && utils.distanceLeft(cur, elements.left),
-      right: !!elements.right && utils.distanceRight(cur, elements.right),
-      up:    !!elements.up    && utils.distanceUp(cur, elements.up),
-      down:  !!elements.down  && utils.distanceDown(cur, elements.down)
+      left: candidates.left &&
+        utils.distanceLeft(focP, candidates.left.placement),
+
+      right: candidates.right &&
+        utils.distanceRight(focP, candidates.right.placement),
+
+      up: candidates.up &&
+        utils.distanceUp(focP, candidates.up.placement),
+
+      down: candidates.down &&
+        utils.distanceDown(focP, candidates.down.placement)
     };
 
-    const best = { el: null };
+    let best = {};
 
-    for (let direction in distances) {
-      if (distances[direction] &&
-        (!best.el || distances[direction] < best.distance)) {
-        best.el = elements[direction];
-        best.distance = distances[direction];
+    Object.keys(distances).forEach((k) => {
+      const distance = distances[k];
+      if (k && (!best.el || k < best.distance)) {
+        best = {
+          el: elements[k],
+          distance
+        };
       }
-    }
+    });
 
-    return best.el || (utils.isInScreen(cur) ? cur : null);
+    return best.el || (utils.isInScreen(focP) ? current : null);
   }
 
   /**
@@ -222,64 +221,68 @@ class Cursor {
    * @returns {HTMLElement|undefined}
    */
   getRight () {
-    if (!this.__focused) {
+    if (!this._focused) {
       return this.getFirst();
     }
 
-    const focused = {
-      el: this.__focused,
+    const foc = {
+      el: null,
       placement: this.getPlacement()
     };
 
-    let currentBest = {
-      el: null, placement: {}
+    let best = {
+      el: null,
+      placement: {}
     };
 
     let foundWithinXAxis = false;
 
-    for (let i = 0, len = this.__links.length; i < len; i++) {
-      const el = this.__links[i];
-      const elem = {
-        el,
-        placement: this.getPlacement(el)
-      };
+    for (let i = 0, len = this._links.length; i < len; i++) {
+      const el = this._links[i];
 
-      if (
-        (utils.isInScreen(elem.el) && elem.el !== focused.el) &&
-        !utils.withinYAxis(focused.el, elem.el) &&
-        elem.placement.left > focused.placement.right
-      ) {
-        if (utils.withinXAxis(focused.el, elem.el)) {
-          if (!foundWithinXAxis) {
-            foundWithinXAxis = true;
-            currentBest = elem;
-          } else if (!currentBest.el) {
-            currentBest = elem;
-          } else if (elem.placement.left < currentBest.placement.left) {
-            currentBest = elem;
-          } else if (
-            elem.placement.left === currentBest.placement.left &&
-            elem.placement.top < currentBest.placement.top
-          ) {
-            currentBest = elem;
-          }
-        } else if (!foundWithinXAxis) {
-          if (!currentBest.el) {
-            currentBest = elem;
-          } else if (elem.placement.left < currentBest.placement.left) {
-            currentBest = elem;
-          } if (
-            elem.placement.left === currentBest.placement.left &&
-            elem.placement.top < currentBest.placement.top
-          ) {
-            currentBest = elem;
+      if (el !== foc.el) {
+        const curr = {
+          el,
+          placement: this.getPlacement(el)
+        };
+
+        if (
+          utils.isInScreen(curr.placement) &&
+          !utils.withinYAxis(foc.placement, curr.placement) &&
+          curr.placement.left > foc.placement.right
+        ) {
+          if (utils.withinXAxis(foc.placement, curr.placement)) {
+            if (!foundWithinXAxis) {
+              foundWithinXAxis = true;
+              best = curr;
+            } else if (
+              !best.el ||
+              curr.placement.left < best.placement.left ||
+              (
+                curr.placement.left === best.placement.left &&
+                curr.placement.top < best.placement.top
+              )
+            ) {
+              best = curr;
+            }
+          } else if (!foundWithinXAxis) {
+            if (
+              !best.el ||
+              curr.placement.left < best.placement.left ||
+              (
+                curr.placement.left === best.placement.left &&
+                curr.placement.top < best.placement.top
+              )
+            ) {
+              best = curr;
+            }
           }
         }
       }
     }
 
-    return currentBest.el ||
-      (utils.isInScreen(this.__focused) ? this.__focused : null);
+    return best.el ||
+      (utils.isInScreen(foc.placement) ? this._focused : null);
   }
 
   /**
@@ -288,64 +291,68 @@ class Cursor {
    * @returns {HTMLElement|undefined}
    */
   getLeft () {
-    if (!this.__focused) {
+    if (!this._focused) {
       return this.getFirst();
     }
 
-    const focused = {
-      el: this.__focused,
+    const foc = {
+      el: null,
       placement: this.getPlacement()
     };
 
-    let currentBest = {
-      el: null, placement: {}
+    let best = {
+      el: null,
+      placement: {}
     };
 
     let foundWithinXAxis = false;
 
-    for (let i = 0, len = this.__links.length; i < len; i++) {
-      const el = this.__links[i];
-      const elem = {
-        el,
-        placement: this.getPlacement(el)
-      };
+    for (let i = 0, len = this._links.length; i < len; i++) {
+      const el = this._links[i];
 
-      if (
-        (utils.isInScreen(elem.el) && elem.el !== focused.el) &&
-        !utils.withinYAxis(focused.el, elem.el) &&
-        elem.placement.right < focused.placement.left
-      ) {
-        if (utils.withinXAxis(focused.el, elem.el)) {
-          if (!foundWithinXAxis) {
-            foundWithinXAxis = true;
-            currentBest = elem;
-          } else if (!currentBest.el) {
-            currentBest = elem;
-          } else if (elem.placement.right > currentBest.placement.right) {
-            currentBest = elem;
-          } else if (
-            elem.placement.right === currentBest.placement.right &&
-            elem.placement.top < currentBest.placement.top
-          ) {
-            currentBest = elem;
-          }
-        } else if (!foundWithinXAxis) {
-          if (!currentBest.el) {
-            currentBest = elem;
-          } else if (elem.placement.right > currentBest.placement.right) {
-            currentBest = elem;
-          } if (
-            elem.placement.right === currentBest.placement.right &&
-            elem.placement.top < currentBest.placement.top
-          ) {
-            currentBest = elem;
+      if (el !== foc.el) {
+        const curr = {
+          el,
+          placement: this.getPlacement(el)
+        };
+
+        if (
+          utils.isInScreen(curr.placement) &&
+          !utils.withinYAxis(foc.placement, curr.placement) &&
+          curr.placement.right < foc.placement.left
+        ) {
+          if (utils.withinXAxis(foc.placement, curr.placement)) {
+            if (!foundWithinXAxis) {
+              foundWithinXAxis = true;
+              best = curr;
+            } else if (
+              !best.el ||
+              curr.placement.right > best.placement.right ||
+              (
+                curr.placement.right === best.placement.right &&
+                curr.placement.top < best.placement.top
+              )
+            ) {
+              best = curr;
+            }
+          } else if (!foundWithinXAxis) {
+            if (
+              !best.el ||
+              curr.placement.right > best.placement.right ||
+              (
+                curr.placement.right === best.placement.right &&
+                curr.placement.top < best.placement.top
+              )
+            ) {
+              best = curr;
+            }
           }
         }
       }
     }
 
-    return currentBest.el ||
-      (utils.isInScreen(this.__focused) ? this.__focused : null);
+    return best.el ||
+      (utils.isInScreen(foc.placement) ? this._focused : null);
   }
 
   /**
@@ -354,64 +361,68 @@ class Cursor {
    * @returns {HTMLElement|undefined}
    */
   getUp () {
-    if (!this.__focused) {
+    if (!this._focused) {
       return this.getFirst();
     }
 
-    const focused = {
-      el: this.__focused,
+    const foc = {
+      el: null,
       placement: this.getPlacement()
     };
 
-    let currentBest = {
-      el: null, placement: {}
+    let best = {
+      el: null,
+      placement: {}
     };
 
     let foundWithinYAxis = false;
 
-    for (let i = 0, len = this.__links.length; i < len; i++) {
-      const el = this.__links[i];
-      const elem = {
-        el,
-        placement: this.getPlacement(el)
-      };
+    for (let i = 0, len = this._links.length; i < len; i++) {
+      const el = this._links[i];
 
-      if (
-        (utils.isInScreen(elem.el) && elem.el !== focused.el) &&
-        !utils.withinXAxis(focused.el, elem.el) &&
-        elem.placement.bottom < focused.placement.top
-      ) {
-        if (utils.withinYAxis(focused.el, elem.el)) {
-          if (!foundWithinYAxis) {
-            foundWithinYAxis = true;
-            currentBest = elem;
-          } else if (!currentBest.el) {
-            currentBest = elem;
-          } else if (elem.placement.bottom > currentBest.placement.bottom) {
-            currentBest = elem;
-          } else if (
-            elem.placement.bottom === currentBest.placement.bottom &&
-            elem.placement.left < currentBest.placement.left
-          ) {
-            currentBest = elem;
-          }
-        } else if (!foundWithinYAxis) {
-          if (!currentBest.el) {
-            currentBest = elem;
-          } else if (elem.placement.bottom < currentBest.placement.bottom) {
-            currentBest = elem;
-          } if (
-            elem.placement.bottom === currentBest.placement.bottom &&
-            elem.placement.left < currentBest.placement.left
-          ) {
-            currentBest = elem;
+      if (el !== foc.el) {
+        const curr = {
+          el,
+          placement: this.getPlacement(el)
+        };
+
+        if (
+          utils.isInScreen(curr.placement) &&
+          !utils.withinXAxis(foc.placement, curr.placement) &&
+          curr.placement.bottom < foc.placement.top
+        ) {
+          if (utils.withinYAxis(foc.placement, curr.placement)) {
+            if (!foundWithinYAxis) {
+              foundWithinYAxis = true;
+              best = curr;
+            } else if (
+              !best.el ||
+              curr.placement.bottom > best.placement.bottom ||
+              (
+                curr.placement.bottom === best.placement.bottom &&
+                curr.placement.left < best.placement.left
+              )
+            ) {
+              best = curr;
+            }
+          } else if (!foundWithinYAxis) {
+            if (
+              !best.el ||
+              curr.placement.bottom < best.placement.bottom ||
+              (
+                curr.placement.bottom === best.placement.bottom &&
+                curr.placement.left < best.placement.left
+              )
+            ) {
+              best = curr;
+            }
           }
         }
       }
     }
 
-    return currentBest.el ||
-      (utils.isInScreen(this.__focused) ? this.__focused : null);
+    return best.el ||
+      (utils.isInScreen(foc.placement) ? this._focused : null);
   }
 
   /**
@@ -420,83 +431,81 @@ class Cursor {
    * @returns {HTMLElement|undefined}
    */
   getDown () {
-    if (!this.__focused) {
+    if (!this._focused) {
       return this.getFirst();
     }
 
-    const focused = {
-      el: this.__focused,
+    const foc = {
+      el: null,
       placement: this.getPlacement()
     };
 
-    let currentBest = {
-      el: null, placement: {}
+    let best = {
+      el: null,
+      placement: {}
     };
 
     let foundWithinYAxis = false;
 
-    for (let i = 0, len = this.__links.length; i < len; i++) {
-      const el = this.__links[i];
-      const elem = {
-        el,
-        placement: this.getPlacement(el)
-      };
+    for (let i = 0, len = this._links.length; i < len; i++) {
+      const el = this._links[i];
 
-      if (
-        (utils.isInScreen(elem.el) && elem.el !== focused.el) &&
-        !utils.withinXAxis(focused.el, elem.el) &&
-        elem.placement.top > focused.placement.bottom
-      ) {
-        if (utils.withinYAxis(focused.el, elem.el)) {
-          if (!foundWithinYAxis) {
-            foundWithinYAxis = true;
-            currentBest = elem;
-          } else if (!currentBest.el) {
-            currentBest = elem;
-          } else if (elem.placement.top < currentBest.placement.top) {
-            currentBest = elem;
-          } else if (
-            elem.placement.top === currentBest.placement.top &&
-            elem.placement.left < currentBest.placement.left
-          ) {
-            currentBest = elem;
-          }
-        } else if (!foundWithinYAxis) {
-          if (!currentBest.el) {
-            currentBest = elem;
-          } else if (elem.placement.top < currentBest.placement.top) {
-            currentBest = elem;
-          } if (
-            elem.placement.top === currentBest.placement.top &&
-            elem.placement.left < currentBest.placement.left
-          ) {
-            currentBest = elem;
+      if (el !== foc.el) {
+        const curr = {
+          el,
+          placement: this.getPlacement(el)
+        };
+
+        if (
+          utils.isInScreen(curr.placement) &&
+          !utils.withinXAxis(foc.placement, curr.placement) &&
+          curr.placement.top > foc.placement.bottom
+        ) {
+          if (utils.withinYAxis(foc.placement, curr.placement)) {
+            if (!foundWithinYAxis) {
+              foundWithinYAxis = true;
+              best = curr;
+            } else if (
+              !best.el ||
+              curr.placement.top < best.placement.top ||
+              (
+                curr.placement.top === best.placement.top &&
+                curr.placement.left < best.placement.left
+              )
+            ) {
+              best = curr;
+            }
+          } else if (!foundWithinYAxis) {
+            if (
+              !best.el ||
+              curr.placement.top < best.placement.top ||
+              (
+                curr.placement.top === best.placement.top &&
+                curr.placement.left < best.placement.left
+              )
+            ) {
+              best = curr;
+            }
           }
         }
       }
     }
 
-    return currentBest.el ||
-      (utils.isInScreen(this.__focused) ? this.__focused : null);
+    return best.el ||
+      (utils.isInScreen(foc.placement) ? this._focused : null);
   }
 
   /**
    * Get the placement of the givent element.
    * @param {HTMLElement} [el]
-   * @returns {Object} placement
-   * @returns {Number} placement.top
-   * @returns {Number} placement.left
-   * @returns {Number} placement.width
-   * @returns {Number} placement.height
+   * @returns {Object|null} placement
    */
   getPlacement (el) {
     if (!el) {
-      if (!this.__focused) {
-        return { top: 0, left: 0, width: 0, height: 0 };
-      }
-      el = this.__focused;
+      return this._focused ?
+        utils.getElementPlacement(this._focused) : null;
     }
-    return el.getBoundingClientRect();
+    return utils.getElementPlacement(el);
   }
 
   /**
@@ -504,11 +513,15 @@ class Cursor {
    * @returns {HTMLElement|null}
    */
   getFocused () {
-    return this.__focused;
+    return this._focused;
   }
 
-  focusPlacement (placement) {
-    // TODO
+  /**
+   * Move the focus to the closest element from a point on the screen, in pixel.
+   * TODO
+   */
+  placeFocus () {
+    return;
   }
 
   /**
@@ -516,7 +529,7 @@ class Cursor {
    * @returns {NodeList|undefined}
    */
   getList () {
-    return this.__links;
+    return this._links;
   }
 
   /**
@@ -524,23 +537,22 @@ class Cursor {
    * @param {HTMLElement} [el]
    */
   focus (el) {
-    if (this.__deactivated) {
+    if (this._deactivated) {
       return;
     }
     if (!el) {
       return this.focusFirst();
     }
-    if (el === this.__focused) {
+    if (el === this._focused) {
       return;
     }
-    if (this.__focused) {
-      this.removeFocus();
-    }
+    this.removeFocus();
     if (this.isFocusable(el)) {
       utils.addFocusedClass(el);
-      this.__focused = el;
+      this._focused = el;
       el.focus();
-      utils.dispatchMouseEvent(el, 'mouseover');
+
+      // utils.dispatchMouseEvent(el, 'mouseover');
     }
   }
 
@@ -548,14 +560,15 @@ class Cursor {
    * Remove any current focus (trigger corresponding events).
    */
   removeFocus () {
-    if (!this.__focused) {
+    if (!this._focused) {
       return;
     }
 
-    utils.removeFocusedClass(this.__focused);
-    this.__focused.blur();
-    utils.dispatchMouseEvent(this.__focused, 'mouseout');
-    this.__focused = null;
+    utils.removeFocusedClass(this._focused);
+    this._focused.blur();
+
+    // utils.dispatchMouseEvent(this._focused, 'mouseout');
+    this._focused = null;
   }
 
   /**
@@ -564,7 +577,14 @@ class Cursor {
    * @returns {Boolean}
    */
   isFocused (el) {
-    return this.__focused === el;
+    return !!el && this._focused === el;
+  }
+
+  /**
+   * Refresh the list of 'focusable' elements.
+   */
+  refreshList () {
+    this._links = document.body.getElementsByClassName(FOCUSABLE_CLASSNAME);
   }
 }
 

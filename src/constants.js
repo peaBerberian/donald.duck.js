@@ -8,7 +8,7 @@ export const FOCUSED_CLASSNAME = '_cursor_';
  * ClassName of the 'selectable' elements
  * @type {string}
  */
-export const SELECTABLE_CLASSNAME = '_mrr_';
+export const FOCUSABLE_CLASSNAME = '_mrr_';
 
 /**
  * Key codes from keyboard events

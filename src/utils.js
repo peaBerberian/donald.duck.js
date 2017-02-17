@@ -1,18 +1,27 @@
 import { FOCUSED_CLASSNAME } from './constants.js';
 
 /**
- * Return false if the given element is not visible
- * @param {DOMElement} el
- * @return {Boolean}
+ * Returns true if the given placement has at least 1 pixel which is visible in
+ * the current window.
+ * @param {Object} placement
+ * @returns {Boolean}
  */
-const isInScreen = (el) => {
-  if (!el) {
-    return false;
-  }
-  const position = el.getBoundingClientRect();
-  return !(position.right <= 0 || position.bottom <= 0 ||
-    position.left >= window.innerWidth ||
-    position.top >= window.innerHeight);
+const isVisible = (placement) => {
+  return !(placement.right <= 0 || placement.bottom <= 0 ||
+    placement.left >= window.innerWidth ||
+    placement.top >= window.innerHeight);
+};
+
+/**
+ * Returns true if the given placement is entirely visible in the current
+ * window.
+ * @param {Object} placement
+ * @returns {Boolean}
+ */
+const isInScreen = (placement) => {
+  return !(placement.right <= 0 || placement.bottom <= 0 ||
+    placement.left >= window.innerWidth ||
+    placement.top >= window.innerHeight);
 };
 
 /**
@@ -20,6 +29,7 @@ const isInScreen = (el) => {
  * Array.
  * @param {Array} a
  * @param {*} obj
+ * @returns {Boolean}
  */
 const arrayIncludes = (a, obj) => {
   let i = a.length;
@@ -32,20 +42,17 @@ const arrayIncludes = (a, obj) => {
 };
 
 /**
- * Manually dispatch a mouse event.
+ * Manually dispatch a MouseEvents event.
  * @param {HTMLElement} el
  * @param {string} type]
  */
 const dispatchMouseEvent = (el, type) => {
-  if (!el) {
-    return;
-  }
   const ev = document.createEvent('MouseEvents');
 
-  // const placement = el.getBoundingClientRect();
+  const placement = el.getBoundingClientRect();
 
-  const x = el.left;
-  const y = el.top;
+  const x = placement.left;
+  const y = placement.top;
   ev.initMouseEvent(type, true, true, window, 0, x, y, x, y, false,
     false, false, false, 0, null);
   el.dispatchEvent(ev);
@@ -53,61 +60,47 @@ const dispatchMouseEvent = (el, type) => {
 
 /**
  * Return true if the two elements overlap each other
- * @param {DOMElement} element1
- * @param {DOMElement} element2
+ * @param {Object} placement
  * @return {Boolean}
  */
-// const elementsOverlap = (element1, element2) => {
-//   return withinXAxis(element1, element2) &&
-//     withinYAxis(element1, element2);
-// };
+const elementsOverlap = (placement1, placement2) =>
+  withinXAxis(placement1, placement2) &&
+    withinYAxis(placement1, placement2);
 
 /**
- * Return true if the two elements share the same x axis (horizontally)
- * @param {DOMElement} element1
- * @param {DOMElement} element2
- * @return {Boolean}
+ * Return true if the two placements share the same x axis (horizontally).
+ * @param {Object} placement
+ * @returns {Boolean}
  */
-const withinXAxis = (element1, element2) => {
-  if (!element1 || !element2) {
-    return false;
-  }
-  const position1 = element1.getBoundingClientRect();
-  const position2 = element2.getBoundingClientRect();
-  return position1.bottom > position2.top &&
-    position1.top    < position2.bottom;
+const withinXAxis = (placement1, placement2) => {
+  return placement1.bottom > placement2.top &&
+    placement1.top < placement2.bottom;
 };
 
 /**
- * Return true if the two elements share the same y axis (vertically)
- * @param {DOMElement} element1
- * @param {DOMElement} element2
+ * Return true if the two placements share the same y axis (vertically).
+ * @param {Object} placement
  * @return {Boolean}
  */
-const withinYAxis = (element1, element2) => {
-  if (!element1 || !element2) {
-    return false;
-  }
-  const position1 = element1.getBoundingClientRect();
-  const position2 = element2.getBoundingClientRect();
-  return position1.right > position2.left &&
-    position1.left  < position2.right;
+const withinYAxis = (placement1, placement2) => {
+  return placement1.right > placement2.left &&
+    placement1.left  < placement2.right;
 };
 
 /**
  * Add FOCUSED_CLASSNAME to a Dom element
- * @param {Element} element
+ * @param {HTMLElement} element
  */
 const addFocusedClass = (element) => {
-  return element.classList.add(FOCUSED_CLASSNAME);
+  element.classList.add(FOCUSED_CLASSNAME);
 };
 
 /**
  * Remove FOCUSED_CLASSNAME to a Dom element
- * @param {Element} element
+ * @param {HTMLElement} element
  */
 const removeFocusedClass = (element) => {
-  return element.classList.remove(FOCUSED_CLASSNAME);
+  element.classList.remove(FOCUSED_CLASSNAME);
 };
 
 /**
@@ -125,116 +118,95 @@ const vectorLength = (point1, point2) => {
 };
 
 /**
- * Return pixel distance between 2 elements when a translation towards
+ * Return pixel distance between 2 placements when a translation towards
  * the bottom is wanted
- * @param {Element} start Starting element
- * @param {Element} end Destination element
- * @return {Number}
+ * @param {Object} placementStart
+ * @param {Object} placementEnd
+ * @returns {Number}
  */
-const distanceDown = (start, end) => {
-  const startPlace = start.getBoundingClientRect();
-  const endPlace = end.getBoundingClientRect();
-
-  // TODO
-  // const startPlace = getElementPlacement(start);
-  // const endPlace = getElementPlacement(end);
-
+const distanceDown = (placementStart, placementEnd) => {
   const startPoint = {
-    x: (startPlace.left + startPlace.right) / 2,
-    y: startPlace.bottom
+    x: (placementStart.left + placementStart.right) / 2,
+    y: placementStart.bottom
   };
 
   let x;
-  if (endPlace.left < startPoint.x) {
-    if (endPlace.right > startPoint.x) {
+  if (placementEnd.left < startPoint.x) {
+    if (placementEnd.right > startPoint.x) {
       x = startPoint.x;
     } else {
-      x = endPlace.right;
+      x = placementEnd.right;
     }
   } else {
-    x = endPlace.left;
+    x = placementEnd.left;
   }
 
   const endPoint = {
     x: x,
-    y: endPlace.top
+    y: placementEnd.top
   };
 
   return parseInt(vectorLength(startPoint, endPoint), 10);
 };
 
 /**
- * Return pixel distance between 2 elements when a translation towards
+ * Return pixel distance between 2 placements when a translation towards
  * the top is wanted
- * @param {Element} start Starting element
- * @param {Element} end Destination element
+ * @param {Object} placementStart
+ * @param {Object} placementEnd
  * @return {Number}
  */
-const distanceUp = (start, end) => {
-  const startPlace = start.getBoundingClientRect();
-  const endPlace = end.getBoundingClientRect();
-
-  // TODO
-  // const startPlace = getElementPlacement(start);
-  // const endPlace = getElementPlacement(end);
-
+const distanceUp = (placementStart, placementEnd) => {
   const startPoint = {
-    x: (startPlace.left + startPlace.right) / 2,
-    y: startPlace.top
+    x: (placementStart.left + placementStart.right) / 2,
+    y: placementStart.top
   };
 
   let x;
-  if (endPlace.left < startPoint.x) {
-    if (endPlace.right > startPoint.x) {
+  if (placementEnd.left < startPoint.x) {
+    if (placementEnd.right > startPoint.x) {
       x = startPoint.x;
     } else {
-      x = endPlace.right;
+      x = placementEnd.right;
     }
   } else {
-    x = endPlace.left;
+    x = placementEnd.left;
   }
 
   const endPoint = {
     x: x,
-    y: endPlace.bottom
+    y: placementEnd.bottom
   };
 
   return parseInt(vectorLength(startPoint, endPoint), 10);
 };
 
 /**
- * Return pixel distance between 2 elements when a translation towards
+ * Return pixel distance between 2 placements when a translation towards
  * the left is wanted
- * @param {Element} start Starting element
- * @param {Element} end Destination element
+ * @param {Object} placementStart
+ * @param {Object} placementEnd
  * @return {Number}
  */
-const distanceLeft = (start, end) => {
-  const startPlace = start.getBoundingClientRect();
-  const endPlace = end.getBoundingClientRect();
-
-  // TODO
-  // const startPlace = getElementPlacement(start);
-  // const endPlace = getElementPlacement(end);
-
+const distanceLeft = (placementStart, placementEnd) => {
   const startPoint = {
-    x: startPlace.left,
-    y: (startPlace.top + startPlace.bottom) / 2
+    x: placementStart.left,
+    y: (placementStart.top + placementStart.bottom) / 2
   };
 
   let y;
-  if (endPlace.top < startPoint.y) {
-    if (endPlace.bottom > startPoint.y) {
+  if (placementEnd.top < startPoint.y) {
+    if (placementEnd.bottom > startPoint.y) {
       y = startPoint.y;
     } else {
-      y = endPlace.bottom;
+      y = placementEnd.bottom;
     }
   } else {
-    y = endPlace.top;
+    y = placementEnd.top;
   }
 
   const endPoint = {
-    x: endPlace.right,
+    x: placementEnd.right,
     y: y
   };
 
@@ -244,36 +216,32 @@ const distanceLeft = (start, end) => {
 /**
  * Return pixel distance between 2 elements when a translation towards
  * the right is wanted
- * @param {Element} start Starting element
- * @param {Element} end Destination element
+ * @param {Object} placementStart
+ * @param {Object} placementEnd
  * @return {Number}
  */
 const distanceRight = (start, end) => {
-  const startPlace = start.getBoundingClientRect();
-  const endPlace = end.getBoundingClientRect();
-
-  // TODO
-  // const startPlace = getElementPlacement(start);
-  // const endPlace = getElementPlacement(end);
+  const placementStart = start.getBoundingClientRect();
+  const placementEnd = end.getBoundingClientRect();
 
   const startPoint = {
-    x: startPlace.right,
-    y: (startPlace.top + startPlace.bottom) / 2
+    x: placementStart.right,
+    y: (placementStart.top + placementStart.bottom) / 2
   };
 
   let y;
-  if (endPlace.top < startPoint.y) {
-    if (endPlace.bottom > startPoint.y) {
+  if (placementEnd.top < startPoint.y) {
+    if (placementEnd.bottom > startPoint.y) {
       y = startPoint.y;
     } else {
-      y = endPlace.bottom;
+      y = placementEnd.bottom;
     }
   } else {
-    y = endPlace.top;
+    y = placementEnd.top;
   }
 
   const endPoint = {
-    x: endPlace.left,
+    x: placementEnd.left,
     y: y
   };
 
@@ -284,24 +252,14 @@ const distanceRight = (start, end) => {
  * Get the placement of the givent element.
  * @param {HTMLElement} [el]
  * @returns {Object} placement
- * @returns {Number} placement.top
- * @returns {Number} placement.left
- * @returns {Number} placement.width
- * @returns {Number} placement.height
  */
-const getElementPlacement = (el) => {
-  const placement = el.getBoundingClientRect();
-
-  return {
-    top: placement.top,
-    left: placement.left,
-    width: placement.width,
-    height: placement.height
-  };
-};
+const getElementPlacement = (el) =>
+  el.getBoundingClientRect();
 
 const utils = {
+  isVisible,
   isInScreen,
+  elementsOverlap,
   arrayIncludes,
   dispatchMouseEvent,
   withinXAxis,
